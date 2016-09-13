@@ -1,0 +1,51 @@
+"SPARTA WWW Site"_sws - "SPARTA Documentation"_sd - "SPARTA Commands"_sc :c
+
+:link(sws,http://sparta.sandia.gov)
+:link(sd,Manual.html)
+:link(sc,Section_commands.html#comm)
+
+:line
+
+compute temp command :h3
+
+[Syntax:]
+
+compute ID temp :pre
+
+ID is documented in "compute"_compute.html command
+temp = style name of this compute command :ul
+
+[Examples:]
+
+compute 1 temp
+compute myTemp temp :pre
+
+[Description:]
+
+Define a computation that calculates the temperature of all particles.
+
+The temperature is calculated by the formula KE = dim/2 N kB T, where
+KE = total kinetic energy of the particles (sum of 1/2 m v^2), dim =
+dimensionality of the simulation, N = number of particles, kB =
+Boltzmann constant, and T = temperature.
+
+Note that this definition of temperature does not subtract out a net
+streaming velocity for particles, so it is not a thermal temperature
+when the particles have a non-zero streaming velocity.
+
+:line
+
+[Output info:]
+
+This compute calculates a global scalar (the temperature).  This value
+can be used by any command that uses global scalar values from a
+compute as input.  See "Section 4.4"_Section_howto.html#howto_4 for an
+overview of SPARTA output options.
+
+The scalar value will be in temperature "units"_units.html.
+
+[Restrictions:] none
+
+[Related commands:] none
+
+[Default:] none

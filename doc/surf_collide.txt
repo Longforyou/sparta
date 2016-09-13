@@ -1,0 +1,171 @@
+"SPARTA WWW Site"_sws - "SPARTA Documentation"_sd - "SPARTA Commands"_sc :c
+
+:link(sws,http://sparta.sandia.gov)
+:link(sd,Manual.html)
+:link(sc,Section_commands.html#comm)
+
+:line
+
+surf_collide command :h3
+
+[Syntax:]
+
+surf_collide ID style args keyword values ... :pre
+
+ID = user-assigned name for the surface collision model :ulb,l
+style = {specular} or {diffuse} or {vanish} :l
+args = arguments for specific style :l
+  {specular} args = none
+  {diffuse} args = Tsurf acc
+    Tsurf = temperature of surface (temperature units)
+            Tsurf can be a variable (see below)
+    acc = accommodation coefficient
+  {vanish} args = none :pre
+zero or more keyword/arg pairs may be appended :l
+keyword = {translate} or {rotate} :l
+values = values for specific keyword :l
+  {translate} args = Vx Vy Vz
+    Vx,Vy,Vz = translational velocity of surface (velocity units)
+  {rotate} args = Pz Py Pz Wx Wy Wz
+    Px,Py,Pz = point to rotate surface around (distance units)
+    Wx,Wy,Wz = angular velocity of surface around point (radians/time) :pre
+:ule
+
+[Examples:]
+
+surf_collide 1 specular
+surf_collide 1 diffuse 273.15 0.9
+surf_collide heatwall diffuse v_ramp 0.8
+surf_collide heatwall diffuse v_ramp 0.8 translate 5.0 0.0 0.0 :pre
+
+[Description:]
+
+Define a model for particle-surface collisions.  One or more models
+can be defined and assigned to different surfaces or simulation box
+boundaries via the "surf_modify"_surf_modify.html or
+"bound_modify"_bound_modify.html commands.  See "Section
+4.9"_Section_howto.html#howto_9 for more details of how SPARTA defines
+surfaces as collections of geometric elements, triangles in 3d and
+line segments in 2d.
+
+The ID for a surface collision model is used to identify it in other
+commands.  Each surface collision model ID must be unique.  The ID can
+only contain alphanumeric characters and underscores.
+
+:line
+
+The {specular} style computes a simple specular reflection model.  It
+requires no arguments.  Specular reflection means that a particle
+reflects off a surface element with its incident velocity vector
+reversed with respect to the outward normal of the surface element.
+The particle's speed is unchanged.
+
+:line
+
+The {diffuse} style computes a simple diffusive reflection model.
+
+The model has 2 parameters set by the {Tsurf} and {acc} arguments.
+{Tsurf} is the temperature of the surface.  {Acc} is an accommodation
+coefficient.
+
+Diffuse reflection emits the particle from the surface with no
+dependence on its incident velocity.  A new velocity is assigned to
+the particle, sampled from a Gaussian distribution consistent with the
+surface temperature.  The new velocity will have thermal components in
+the direction of the outward surface normal and the plane tangent to
+the surface given by:
+
+:c,image(Eqs/diffuse_normal.jpg)
+
+The {Tsurf} value can be specified as an equal-style
+"variable"_variable.html.  If the value is a variable, it should be
+specified as v_name, where name is the variable name.  In this case,
+the variable will be evaluated each timestep, and its value used to
+determine the current surface temperature.
+
+Equal-style variables can specify formulas with various mathematical
+functions, and include "stats_style"_status_style.html command
+keywords for the simulation box parameters and timestep and elapsed
+time.  Thus it is easy to specify a time-dependent temperature.
+
+:line
+
+The {vanish} style simply deletes any particle which hits the surface.
+
+This is useful if a surface is defined to be an inflow boundary on the
+simulation domain, e.g. using the "fix emit/surf"_fix_emit_surf.html
+command.  Using this surface collision model will also treat the
+surface as an outflow boundary.  This is similar to using the "fix
+emit/face"_fix_emit_face.html command on a simulation box face while
+also setting the face to be an outflow boundary via the "boundary
+o"_boundary.html command.
+
+Note that the "surf_react global"_surf_react.html command can also be
+used to delete particles hitting a surface, by setting the {pdelete}
+parameter to 1.0.  Using a surf_collide vanish command is simpler.
+
+:line
+
+The keyword {translate} can only be applied to the {diffuse} style.
+It models the surface as if it were translating with a constant
+velocity, specified by the vector (Vx,Vy,Vz).  This velocity is added
+to the final post-collisional velocity of each particle that collides
+with the surface.
+
+The keyword {rotate} can only be applied to the {diffuse} style.  It
+models the surface as if it were rotating with a constant angular
+velocity, specified by the vector W = (Wx,Wy,Wz), around the specified
+point P = (Px,Py,Pz).  Note that W and P define the rotation axis.
+The magnitude of W defines the speed of rotation.  I.e. if the length
+of W = 2*pi then the surface is rotating at one revolution per time
+unit, where time units are defined by the "units"_units.html command.
+
+When a particle collides with the surface at a point X = (x,y,z), the
+collision point has a velocity given by V = (Vx,Vy,Vz) = W cross
+(X-P).  This velocity is added to the final post-collisional velocity
+of the particle.
+
+The {rotate} keyword can be used to treat a simulation box boundary as
+a rotating wall, e.g. the end cap of an axisymmetric cylinder.  Or to
+model a rotating object consisting of surface elements, e.g. a sphere.
+In either case, the wall or surface elements themselves do not change
+position due to rotation.  They are simply modeled as having a
+tangential velocity, as if the entire object were rotating.
+
+IMPORTANT NOTE: For both the {translate} and {rotate} keywords the
+added velocity can only be tangential to the surface, with no normal
+component since the surface is not actually moving in the normal
+direction.  SPARTA does not check that the specified translation or
+rotation produces a tangential velocity.  However if does enforce the
+condition by subtracting off any component of the added velocity that
+is normal to the simulation box boundary or individual surface
+element.
+
+:line
+
+[Output info:]
+
+All the surface collide models calculate a global vector of length 2.
+The values can be used by the "stats_style"_stats_style.html command
+and by "variables"_variable.html that define formulas.  The latter
+means they can be used by any command that uses a variable as input,
+e.g. "the "fix ave/time"_fix_ave_time.html command.  See "Section
+4.4"_Section_howto.html#howto_4 for an overview of SPARTA output
+options.
+
+The first element of the vector is the count of particles that hit
+surface elements assigned to this collision model during the current
+timestep.  The second element is the cummulative count of particles
+that have hit surface elements since the current run began.
+
+:line
+
+[Restrictions:]
+
+The {translate} and {rotate} keywords cannot be used together.
+
+[Related commands:]
+
+"read_surf"_read_surf.html, "bound_modify"_bound_modify.html
+
+[Default:] none

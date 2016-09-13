@@ -1,0 +1,384 @@
+"SPARTA WWW Site"_sws - "SPARTA Documentation"_sd - "SPARTA Commands"_sc :c
+
+:link(sws,http://sparta.sandia.gov)
+:link(sd,Manual.html)
+:link(sc,Section_commands.html#comm)
+
+:line
+
+read_surf command :h3
+
+[Syntax:]
+
+read_surf filename keyword args ... :pre
+
+filename = name of surface file :ulb,l
+zero or more keyword/args pairs may be appended :l
+keyword = {origin} or {trans} or {atrans} or {ftrans} or {scale} or {rotate} or {invert} or {clip} or {group} or {typeadd} or {particle} :l
+  origin args = Ox Oy Oz
+    Ox,Oy,Oz = set origin of surface to this point (distance units)
+  trans args = Dx Dy Dz
+    Dx,Dy,Dz = translate origin by this displacement (distance units)
+  atrans args = Ax Ay Az
+    Ax,Ax,Az = translate origin to this absolute point (distance units)
+  ftrans args = Fx Fy Fz
+    Fx,Fy,Fz = translate origin to this fractional point in simulation box
+  scale args = Sx Sy Sz
+    Sx,Sy,Sz = scale surface by these factors around origin
+  rotate args = theta Rx Ry Rz
+    theta = rotate surface by this angle in counter-clockwise direction (degrees)
+    Rx,Ry,Rz = rotate around vector starting at origin pointing in this direction
+  invert args = none
+  clip args = none or fraction
+    fraction = push points close to the box boundary to the boundary (optional)
+  group arg = group-ID
+    group-ID = new or existing surface group to assign the surface elements to
+  typeadd arg = Noffset
+    Noffset = add Noffset to the type value of each element
+  particle args = {none} or {check} or {keep}
+    none = allow no particles in simulation when read surfs
+    check = delete particles inside surfs or in cells intersected by surfs
+    keep = keep all particles :pre
+:ule
+
+[Examples:]
+
+read_surf surf.sphere
+read_surf surf.sphere group sphere2 typeadd 1
+read_surf surf.file trans 10 5 0 scale 3 3 3 invert clip
+read_surf surf.file trans 10 5 0 scale 3 3 3 invert clip 1.0e-6 :pre
+
+[Description:]
+
+Read the geometry of a surface from the specified file.  In SPARTA, a
+"surface" is a collection of surface elements that represent the
+surface of one or more physical objects which will be embedded in the
+global simulation box.  Surface elements are triangles in 3d or line
+segments in 2d.  Surface elements for each physical object are
+required to be a complete, connected set that tile the entire surface
+of the object.  See the discussion of watertight surfaces below.
+
+Particles collide with surface elements as they advect.  Each surface
+element is assigned to a collision model, specified by the
+"surf_collide"_surf_collide.html command which affects how a particle
+bounces off the surface.  Each surface elements can optionally be
+assigned to a reaction model, specified by the
+"surf_react"_surf_react.html command which determines if any surface
+chemistry occurs during a collision.  Statistics for each surface
+element due to their interactions with particles can be tallied via
+the "compute surf"_compute_surf.html command, time-averaged via the
+"fix ave/surf"_fix_ave_surf.html command, and ouput via the "dump
+surface"_dump.html command.
+
+Surface elememts can be assigned to surface groups via the "group
+surf"_group.html command.  Surface group IDs are used by other
+commands to operate on selected sets of elements.  This command has
+{group} and {typeadd} keywords which can be used to help assign
+different elements or different objects to different groups.
+
+Note that the read_surf command can be used multiple times to read
+multiple objects from multiple files and add them to the simulation
+domain.  The format of a surface file is discussed below.  Optional
+keywords allow the vertices in the file to be translated, scaled, and
+rotated in various ways.  This allows a single surface file,
+e.g. containing a unit sphere, to be used multiple times in a single
+simulation or in different simulations.
+
+The tools directory contains tools that can create surface files with
+simple geometric objects (spheres, blocks, etc).  It also has tools
+that can convert surface files in other formats to the SPARTA format,
+e.g. for files created by a mesh-generation program.
+
+:line
+
+The specified file can be a text file or a gzipped text file (detected
+by a .gz suffix).
+
+A surface file has a header and a body.  The header appears first.
+The first line of the header is always skipped; it typically contains
+a description of the file.  Then lines are read one at a time.  Lines
+can have a trailing comment starting with '#' that is ignored.  If the
+line is blank (only whitespace after comment is deleted), it is
+skipped.  If the line contains a header keyword, the corresponding
+value is read from the line.  If it doesn't contain a header keyword,
+the line begins the body of the file.
+
+The body of the file contains one or more sections.  The first line of
+a section has only a keyword.  The next line is skipped.  The
+remaining lines of the section contain values.  The number of lines in
+a section depends on the section keyword as described below.  Zero or
+more blank lines can be used between sections.  Sections can appear in
+any order.
+
+The formatting of individual lines in the surface file (indentation,
+spacing between words and numbers) is not important except that header
+and section keywords must be capitalized as shown and can't have extra
+white space between their words.
+
+These are the recognized header keywords.  Header lines can come in
+any order.  The value(s) are read from the beginning of the line.
+Thus the keyword {points} should be in a line like "1000 points".
+
+{points} = # of points in surface
+{lines} = # of line segments in surface (only allowed for 2d)
+{triangles} = # of triangles in surface (only allowed for 3d) :ul
+
+These are the recognized section keywords for the body of the file.
+
+{Points, Lines, Triangles} :ul
+
+The {Points} section consists of N consecutive entries, where N = # of
+points, each of this form:
+
+point-ID x y z    (for 3d) 
+point-ID x y      (for 2d) :pre
+
+The point-ID is ignored; it is only added to assist in examining the
+file.  The point-IDs should run consecutively from 1 to N.  {X,y,z}
+are the coordinates of the point in distance units.  Note that for 2d
+simulations, {z} should be omitted.
+
+The {Lines} section is only allowed for 2d simulations and consists of
+N entries, where N = # of lines, each of this form:
+
+line-ID (type) p1 p2 :pre
+
+The line-ID is ignored; it is only added to assist in examining the
+file.  {Type} is an optional integer value which must be specified for
+all or none of the lines.  If used, it must be a positive integer
+value for each line.  If not specified, the type of each line is set
+to 1.  Line types can be used to assign lines to surface groups via
+the "group surf"_group.html command.
+
+{P1} and {p2} are the point-IDs of the 2 end points of the line
+segment.  Each is a value from 1 to Npoints, as described above.
+
+The ordering of {p1} and {p2} is important as it defines the direction
+of the outward normal for the line segment when a particle collides
+with it.  Molecules only collide with the "outer" edge of a line
+segment.  This is defined by a right-hand rule.  The outward normal N
+= (0,0,1) x (p2-p1).  In other words, a unit z-direction vector is
+crossed into the vector from {p1} to {p2} to determine the normal.
+
+The {Triangles} section is only allowed for 3d simulations and
+consists of N entries, where N = # of triangles, each of this form:
+
+tri-ID (type) p1 p2 p3 :pre
+
+The tri-ID is ignored; it is only added to assist in examining the
+file.  {Type} is an optional integer value which must be specified for
+all or none of the triangles.  If used, it must be a positive integer
+value for each triangle.  If not specified, the type of each triangle
+is set to 1.  Triangle types can be used to assign triangles to
+surface groups via the "group surf"_group.html command.
+
+{P1} and {p2} and {p3} are the point-IDs of the 3 corner points of the
+triangle.  Each is a value from 1 to Npoints, as described above.
+
+The ordering of {p1} and {p2} and {p3} is important as it defines the
+direction of the outward normal for the triangle when a particle
+collides with it.  Molecules only collide with the "outer" face of a
+triangle. This is defined by a right-hand rule.  The outward normal N
+= (p2-p1) x (p3-p1).  In other words, the edge from {p1} to {p2} is
+crossed into the edge from {p1} to {p3} to determine the normal.
+
+:line
+
+The following optional keywords affect the geometry of the read-in
+surface elements.  The geometric transformations they describe are
+performed in the order they are listed, which gives flexibility in how
+surfaces can be manipulated.  Note that the order may be important;
+e.g. performing an {origin} operation followed by a {rotate} operation
+may not be the same as a {rotate} followed by a {origin}.
+
+Most of the keywords perform a geometric transformation on all the
+vertices in the surface file with respect to an origin point.  By
+default the origin is (0.0,0.0,0.0), regardless of the position of
+individual vertices in the file.
+
+The {origin} keyword resets the origin to the specified {Ox,Oy,Oz}.
+This operation has no effect on the vertices.
+
+The {trans} keyword shifts or displaces the origin by the vector
+(Dx,Dy,Dz).  It also displaces each vertex by (Dx,Dy,Dz).
+
+The {atrans} keyword resets the origin to an absolute point (Ax,Ay,Az)
+which implies a displacement (Dx,Dy,Dz) from the current origin.  It
+also displaces each vertex by (Dx,Dy,Dz).
+
+The {ftrans} keyword resets the origin to a fractional point
+(Fx,Fy,Fz).  Fractional means that Fx = 0.0 is the lower edge/face in
+the x-dimension and Fx = 1.0 is the upper edge/face in the
+x-dimension, and similarly for Fy and Fz.  This change of origin
+implies a displacement (Dx,Dy,Dz) from the current origin.  This
+operation also displaces each vertex by (Dx,Dy,Dz).
+
+The {scale} keyword does not change the origin.  It computes the
+displacement vector of each vertex from the origin (delx,dely,delz)
+and scales that vector by (Sx,Sy,Sz), so that the new vertex
+coordinate is (Ox + Sx*delx,Oy + Sy*dely,Oz + Sz*delz).
+
+The {rotate} keyword does not change the origin.  It rotates the
+coordinates of all vertices by an angle {theta} in a counter-clockwise
+direction, around the vector starting at the origin and pointing in
+the direction {Rx,Ry,Rz}.  Any rotation can be represented by an
+appropriate choice of origin, {theta} and (Rx,Ry,Rz).
+
+The {invert} keyword does not change the origin or any vertex
+coordinates.  It flips the direction of the outward surface normal of
+each surface element by changing the ordering of its vertices.  Since
+particles only collide with the outer surface of a surface element,
+this is a mechanism for using a surface files containing a single
+sphere (for example) as either a sphere to embed in a flow field, or a
+spherical outer boundary containing the flow.
+
+The {clip} keyword does not change the origin.  It truncates or
+"clips" a surface that extends outside the simulation box in the
+following manner.  In 3d, each of the 6 clip planes represented by
+faces of the global simulation box are considered in turn.  Any
+triangle that straddles the face (with points on both sides of the
+clip plane), is truncated at the plane.  New points along the edges
+that cross the plane are created.  A triangle may also become a
+trapezoid, in which case it turned into 2 triangles.  Then all the
+points on the side of the clip plane that is outside the box, are
+projected onto the clip plane.  Finally, all triangles that lie in the
+clip plane are removed, as are any points that are unused after the
+triangle removal.  After this operation is repeated for all 6 faces,
+the remaining surface is entirely inside the simulation box, though
+some of its triangles may include points on the faces of the
+simulation box.  A similar operation is performed in 2d with the 4
+clip edges represented by the edges of the global simulation box.
+
+If you use the {clip} keyword, you should check the resulting
+statistics of the clipped surface printed out by this command,
+including the minimum size of line and triangle edge lengths.  It is
+possible that very short lines or very small triangles will be created
+near the box surface due to the clipping operation, depending on the
+coordinates of the initial unclipped points. 
+
+If this is the case, an optional {fraction} argument can be appended
+to the {clip} keyword.  {Fraction} is a unitless value which is
+converted to a distance {delta} in each dimension where delta =
+fraction * (boxhi - boxlo).  If a point is nearer than delta to the lo
+or hi boundary in a dimension, the point is moved to be on the
+boundary, before the clipping operation takes place.  This can prevent
+tiny surface elements from being created due to clipping.  If
+{fraction} is not specified, the default value is 0.0, which means
+points are not moved.  If specified, {fraction} must be a value
+between 0.0 and 0.5.
+
+Note that the {clip} operation may delete some surface elements and
+create new ones.  Likewise for the points that define the end points
+or corner points of surface element lines (2d) or triangles (3d).  The
+resulting altered set of surface elements can be written out to a file
+by the "write_surf"_write_surf.html command, which can then be used an
+input to a new simulation or for post-processing and visualization.
+
+:line
+
+The following optional keywords affect group and type settings of the
+read-in surface elements.
+
+Surface groups are collections of surface elements.  Each surface
+element belongs to one or more surface groups; all elements belong to
+the "all" group, which is created by default.  Surface group IDs are
+used by other commands to identify a group of suface elements to
+operate on.  See the "group surf"_group.html command for more details.
+
+Every surface element also stores a {type} which is a positive
+integer.  {Type} values are useful for flagging subsets of elements or
+different objects in the surface file.  For example, a patch of
+triangles on a sphere.  Or one sphere out of several that the file
+contains.  Surface element types can be used to define surface groups.
+See the "group surf"_group.html command for details.
+
+The {group} keyword specifies an extra surface {group-ID} to assign
+all the read-in surface elements to.  All the read-in elements are
+assigned to the "all" group and to {group-ID}.  If {group-ID} does not
+exist, a new surface group is created.  If it does exist the read-in
+surface elements are added to that group.
+
+The {typeadd} keyword defines an {Noffset} value which is added to the
+type of each read-in surface element.  The default is Noffset = 0,
+which means the read-in type values are not altered.  If type values
+are not included in the file, they default to 1 for every element, but
+can still be altered by the {typeadd} keyword.
+
+Note that use of the {group} and {typeadd} keywords allow the same
+surface file to be read multiple times (e.g. with different origins,
+tranlations, rotations, etc) to define multiple objects, and assign
+their surface elements to different groups or different type values.
+
+The {particle} keyword determines how particles in the simulation are
+affected by the new surface elements.  If the setting is {none}, which
+is the default, then no particles can exist in the simulation.  If the
+setting is {check}, then particles in grid cells that are inside the
+new watertight surface object(s) or in grid cells intersected by the
+new surface elements are deleted.  This is to insure no particles will
+end up inside a surface object, which will typically generate errors
+when particles move.  If the setting is {keep} then no particles are
+deleted.  It is up to you to insure that no particles are inside
+surface object(s), else an error may occur later.  This setting can
+be useful if a "remove_surf"_remove_surf.html was used to remove
+a surface object, and a new object is being read in, and you know
+the new object is smaller than the one it replaced.  E.g. for a model
+of a shrinking or ablating object.
+
+:line
+
+[Restrictions:]
+
+This command can only be used after the simulation box is defined by
+the "create_box"_create_box.html command, and after a grid has been
+created by the "create_grid"_create_grid.html command.  If particles
+already exist in the simulation, you must insure particles do not
+end up inside the added surfaces.  See the {particle} keyword
+for options with regard to particles.
+
+To read gzipped surface files, you must compile SPARTA with the
+-DSPARTA_GZIP option - see "Section 2.2"_Section_start.html#start_2 of
+the manual for details.
+
+Every vertex in the final surface (after translation, rotation,
+scaling, etc) must be inside or on the surface of the global
+simulation box.  Note that using the {clip} operation guarantees that
+this will be the case.
+
+The surface elements in a single surface file must represent a
+"watertight" surface.  For a 2d simulation this means that every point
+is part of exactly 2 line segments.  For a 3d simulation it means that
+every triangle edge is part of exactly 2 triangles.  Exceptions to
+these rules allow for triangle edges (in 3d) that lie entirely in a
+global face of the simulation box, or for line points (in 2d) that are
+on a global edge of the simulation box.  This can be the case after
+clipping, which allows for use of watertight surface object (e.g. a
+sphere) that is only partially inside the simulation box, but which
+when clipped to the box becomes non-watertight, e.g. half of a sphere.
+
+Note that this definition of watertight does not require that the
+surface elements in a file represent a single physical object;
+multiple objects (e.g. spheres) can be represented, provided each is
+watertight.
+
+Another restriction on surfaces is that they do not represent an
+object that is "infinitely thin", so that two sides of the same object
+lie in the same plane (3d) or on the same line (2d).  This will not
+generate an error when the surface file is read, assuming the
+watertight rule is followed.  However when particles collide with the
+surface, errors will be generated if a particle hits the "inside" of a
+surface element before hitting the "outside" of another element.  This
+can occur for infinitely thin surfaces due to numeric round-off.
+
+When running a simulation with multiple objects, read from one or more
+surface files, you should insure they do not touch or overlap with
+each other.  SPARTA does not check for this, but it will typically
+lead to unphysical particle dynamics.
+
+[Related commands:]
+
+"write_surf"_write_surf.html
+
+[Default:]
+
+The default origin for the vertices in the surface file is (0,0,0).
+The defaults for group = all, type = no, toffset = 0, particle = none.
