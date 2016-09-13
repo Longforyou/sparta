@@ -3,6 +3,14 @@ This is the SPARTA software package.
 SPARTA stands for Stochastic PArallel Rarefied-gas Time-accurate
 Analyzer.
 
+----------------------------------------------------------------------
+
+> THIS IS NOT AN OFFICIAL REPOSITORY FOR SPARTA.
+> THIS WAS FORKED FROM THE GPL CODE PROVIDED AT THE
+> OFFICIAL WEBSITE: http://sparta.sandia.gov/
+
+----------------------------------------------------------------------
+
 Copyright (2014) Sandia Corporation.  Under the terms of Contract
 DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
 certain rights in this software.  This software is distributed under
